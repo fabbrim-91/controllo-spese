@@ -17,15 +17,17 @@ import { Toast } from '@ionic-native/toast';
 })
 export class AddExpensePage {
 	
-	expenseDate: String = new Date().toISOString();
-  data = { expenseDate:"", type:"", description:"", amount:1.0 };
+	expenseDate: String;
+  data = { expenseDate: "", type:"", description:"", amount: 0.0 };
   
   constructor(
 		public navCtrl: NavController,
     public navParams: NavParams,
     private sqlite: SQLite,
     private toast: Toast
-  ) {}
+  ) {
+		this.data.expenseDate = new Date().toISOString();
+  }
   
   bttCancel() {
 		this.navCtrl.popToRoot();

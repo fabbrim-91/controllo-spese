@@ -1,6 +1,9 @@
 import { Component } from '@angular/core';
 import { IonicPage, NavController, NavParams } from 'ionic-angular';
 
+import { AddExpensePage } from '../add-expense/add-expense';
+import { AddIncomePage } from '../add-income/add-income';
+
 /**
  * Generated class for the AddValuesPage page.
  *
@@ -15,7 +18,12 @@ import { IonicPage, NavController, NavParams } from 'ionic-angular';
 })
 export class AddValuesPage {
 
+	tabAddExpense;
+  tabAddIncome;
+  
   constructor(public navCtrl: NavController, public navParams: NavParams) {
+		this.tabAddExpense = AddExpensePage;
+		this.tabAddIncome = AddIncomePage;
   }
 
   ionViewDidLoad() {

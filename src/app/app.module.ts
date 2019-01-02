@@ -7,7 +7,9 @@ import { Toast } from '@ionic-native/toast';
 
 import { MyApp } from './app.component';
 import { HomePage } from '../pages/home/home';
+import { AddValuesPage } from '../pages/add-values/add-values';
 import { AddExpensePage } from '../pages/add-expense/add-expense';
+import { AddIncomePage } from '../pages/add-income/add-income';
 import { ItemDetailsPage } from '../pages/item-details/item-details';
 import { ListPage } from '../pages/list/list';
 
@@ -18,6 +20,8 @@ import { SplashScreen } from '@ionic-native/splash-screen';
   declarations: [
     MyApp,
     HomePage,
+    AddValuesPage,
+    AddIncomePage,
     AddExpensePage,
     ItemDetailsPage,
     ListPage
@@ -30,6 +34,8 @@ import { SplashScreen } from '@ionic-native/splash-screen';
   entryComponents: [
     MyApp,
     HomePage,
+    AddValuesPage,
+    AddIncomePage,
     AddExpensePage,
     ItemDetailsPage,
     ListPage

@@ -7,12 +7,15 @@
 <ion-header>
 
   <ion-navbar>
-    <ion-title>addValues</ion-title>
   </ion-navbar>
 
 </ion-header>
 
 
 <ion-content padding>
-
+	<ion-tabs selectedIndex="0" tabsHighlight="true" tabsLayout="icon-start" tabsPlacement="top">
+		<ion-tab [root]="tabAddExpense" tabTitle="Agg. Spese" tabIcon="remove-circle"></ion-tab>
+		<ion-tab [root]="tabAddIncome" tabTitle="Agg. Incassi" tabIcon="add-circle"></ion-tab>
+	</ion-tabs>
+	
 </ion-content>

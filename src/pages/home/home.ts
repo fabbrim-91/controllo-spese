@@ -3,8 +3,7 @@ import { NavController } from 'ionic-angular';
 import { SQLite, SQLiteObject } from '@ionic-native/sqlite';
 import { Toast } from '@ionic-native/toast';
 
-
-import { AddExpensePage } from '../add-expense/add-expense';
+import { AddValuesPage } from '../add-values/add-values';
 
 @Component({
   selector: 'page-home',
@@ -26,10 +25,6 @@ export class HomePage {
 		this.currentMonth = this.monthNameIta[this.currentDate.getMonth()];
   }
   
-  setBalanceColor(){
-  	this.textColor = this.balance > 0 ?  "balance-color-red-green" : "balance-color-red";
-  }
-  
   ionViewDidLoad() {
 		console.log("view loaded!");
 		this.getData();
@@ -39,7 +34,11 @@ export class HomePage {
 	ionViewWillEnter() {
 		this.getData();
 	}
-
+  
+  setBalanceColor(){
+  	this.textColor = this.balance > 0 ?  "balance-color-red-green" : "balance-color-red";
+  }
+  
 	getData() {
 		this.sqlite.create
 		(
@@ -104,7 +103,7 @@ export class HomePage {
 	}
 
 	addExpense() {
-		this.navCtrl.push(AddExpensePage);
+		this.navCtrl.push(AddValuesPage);
 	}
 
 	/*editData(rowid) {
