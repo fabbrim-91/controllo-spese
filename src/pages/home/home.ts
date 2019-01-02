@@ -11,7 +11,8 @@ import { AddExpensePage } from '../add-expense/add-expense';
   templateUrl: 'home.html'
 })
 export class HomePage {
-	monthNameIta = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+  public textColor: String = "balance-color-red";
+  monthNameIta = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 	expenses: any = [];
 	totalIncome = 0;
 	totalExpense = 0;
@@ -24,8 +25,14 @@ export class HomePage {
 		this.currentMonth = this.monthNameIta[this.currentDate.getMonth()];
   }
   
+  setBalanceColor(){
+  	this.textColor = this.balance > 0 ?  "balance-color-red-green" : "balance-color-red";
+  }
+  
   ionViewDidLoad() {
+		console.log("view loaded!");
 		this.getData();
+		this.setBalanceColor(); //set balance class
 	}
 
 	ionViewWillEnter() {

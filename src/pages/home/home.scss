@@ -14,10 +14,23 @@ page-hello-ionic {
 	text-align: right;
 }
 
+.balance-color-red{
+	color: #f53d3d;
+}
+
+.balance-color-green{
+	color: map-get($colors,danger);
+}
+
 .income{
 		background-color: #80FF80;
-		color: green;
+		color: map-get($colors,green);
 }
+
 .expense{
 		background-color: danger;
+}
+
+.btt-add-income{
+	padding-top: 8px;
 }

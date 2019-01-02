@@ -13,21 +13,23 @@
 
   <ion-card-header class="card-header">
    BILANCIO MENSILE
+   <p><span>{{currentMonth}}, {{currentDate | date:"yyyy"}}</span></p>
   </ion-card-header>
   
   <ion-card-content>
-		<span>{{currentMonth}}, {{currentDate | date:"yyyy"}}</span>
-		<button ion-button full color="green">
-			<span>Incasso (€): {{totalIncome}}</span>
-		</button>
+
 		<button ion-button full color="danger">
 			Spesa (€): {{totalExpense}}
 		</button>
+		
+		<button ion-button full color="green">
+			<span>Incasso (€): {{totalIncome}}</span>
+		</button>
 	 </ion-card-content>
 	 
-	 <ion-row class="card-footer">
+	 <ion-row class="card-footer" ngClass="{{textColor}}" >
       <ion-col >
-				<span>SALDO (€): {{balance}}</span>
+				<div>SALDO (€): {{balance}}</div>
       </ion-col>
     </ion-row>
 
@@ -73,10 +75,17 @@
       </ion-item-options>
     </ion-item-sliding>
 		-->
-	
- 	<p>
+	<ion-fab bottom right>
+			<div>
+				<button ion-fab color="danger" (click)="addExpense()"><ion-icon name="remove"></ion-icon></button>
+			</div>
+			<div class="btt-add-income">
+				<button ion-fab color="green" menuToggle><ion-icon name="add"></ion-icon></button>
+			</div>
+	</ion-fab>
+<!-- 	<p>
 			<button ion-button round color="green" menuToggle>Aggiungi Entrata</button>
 			<button ion-button round color="danger" (click)="addExpense()">Aggiungi Spesa</button>
 		</p>
-
+-->
 </ion-content>
