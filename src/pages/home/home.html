@@ -1,0 +1,82 @@
+<ion-header>
+  <ion-navbar>
+    <button ion-button menuToggle>
+      <ion-icon name="menu"></ion-icon>
+    </button>
+    <ion-title>Home Page</ion-title>
+  </ion-navbar>
+</ion-header>
+
+
+<ion-content fullscreen>
+	<ion-card>
+
+  <ion-card-header class="card-header">
+   BILANCIO MENSILE
+  </ion-card-header>
+  
+  <ion-card-content>
+		<span>{{currentMonth}}, {{currentDate | date:"yyyy"}}</span>
+		<button ion-button full color="green">
+			<span>Incasso (€): {{totalIncome}}</span>
+		</button>
+		<button ion-button full color="danger">
+			Spesa (€): {{totalExpense}}
+		</button>
+	 </ion-card-content>
+	 
+	 <ion-row class="card-footer">
+      <ion-col >
+				<span>SALDO (€): {{balance}}</span>
+      </ion-col>
+    </ion-row>
+
+
+
+</ion-card>
+	 <!--<ion-grid>
+		<ion-row>
+			<ion-col>
+					<div>
+						<span>Incasso: {{totalIncome}}</span><br />
+						<span>Spesa: {{totalExpense}}</span><br />
+						<span>Saldo: {{balance}}</span>
+					</div>
+			</ion-col>
+		</ion-row>
+		<ion-row>
+			<ion-col>
+				<ion-item-sliding *ngFor="let expense of expenses; let i=index">-
+					<ion-item nopadding>
+						<p>
+						<span>
+								{{expense.date}}</span><br>
+								Type: {{expense.type}}<br>
+								{{expense.description}}
+						</p>
+						<h3 item-end>
+							Amount: €{{expense.amount}}
+						</h3>
+					</ion-item> 
+					</ion-item-sliding>
+					
+			</ion-col>
+		</ion-row>
+		</ion-grid>
+		-->
+  
+    <!--  <ion-item-options side="right">
+        <button ion-button color="primary" >
+        </button>
+        <button ion-button color="danger">
+        </button>
+      </ion-item-options>
+    </ion-item-sliding>
+		-->
+	
+ 	<p>
+			<button ion-button round color="green" menuToggle>Aggiungi Entrata</button>
+			<button ion-button round color="danger" (click)="addExpense()">Aggiungi Spesa</button>
+		</p>
+
+</ion-content>

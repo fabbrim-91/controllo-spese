@@ -1,0 +1,7 @@
+{
+  "name": "controlloSpese",
+  "integrations": {
+    "cordova": {}
+  },
+  "type": "ionic-angular"
+}
