@@ -11,16 +11,17 @@ import { AddExpensePage } from '../add-expense/add-expense';
   templateUrl: 'home.html'
 })
 export class HomePage {
-  public textColor: String = "balance-color-red";
-  monthNameIta = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+  textColor: String;
+  monthNameIta: String[];
 	expenses: any = [];
 	totalIncome = 0;
 	totalExpense = 0;
 	balance = 0;
 	currentDate;
-	currentMonth = "N/A";
+	currentMonth : String;
 	
   constructor(public navCtrl: NavController, private sqlite: SQLite, private toast: Toast) {
+		this.monthNameIta = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 		this.currentDate = new Date();
 		this.currentMonth = this.monthNameIta[this.currentDate.getMonth()];
   }
