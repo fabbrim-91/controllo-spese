@@ -1,0 +1,9 @@
+"ok"10/07/2026 15:36:26,91 
+"ok"10/07/2026 15:48:50,85 
+13/07/2026 12:00:02,23 
+13/07/2026 12:15:23,97 
+---- 13/07/2026 13:18:20,33 ---- 
+curl: (35) schannel: next InitializeSecurityContext failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation function was unable to check revocation for the certificate.
+HTTP=000
+---- 13/07/2026 13:19:27,81 ---- 
+"ok"HTTP=200
