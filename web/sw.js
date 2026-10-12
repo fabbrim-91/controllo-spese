@@ -1,7 +1,7 @@
 /* Strategia NETWORK-FIRST: online prendi sempre la versione fresca dalla rete,
    la cache serve solo da riserva quando sei offline. Niente piu' versioni
    vecchie servite dopo un deploy. Le chiamate a Supabase/CDN passano dirette. */
-const CACHE = 'note-spese-v13';
+const CACHE = 'note-spese-v14';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
 

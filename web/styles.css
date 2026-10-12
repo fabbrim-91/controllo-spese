@@ -474,3 +474,40 @@ body {
 .ptr.ready .ptr-ic { transform: rotate(180deg); }
 .ptr.spin .ptr-ic { animation: ptrspin .7s linear infinite; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
+
+/* ---------- Schede Bilanci / Totali ---------- */
+.tabs { display: flex; gap: 4px; margin-bottom: 10px; background: var(--line); padding: 3px; border-radius: 11px; }
+.tab {
+  flex: 1; border: none; background: transparent; color: var(--muted);
+  font: 600 13.5px var(--sans); padding: 8px 10px; border-radius: 9px; cursor: pointer;
+}
+.tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(25,26,28,.08); }
+
+/* ---------- Tabella totali ---------- */
+.tot-head, .tot-row { display: flex; align-items: baseline; padding: 10px 16px; gap: 8px; }
+.tot-head {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line);
+}
+.tot-row + .tot-row, .tot-row { border-top: 1px solid var(--line); }
+.tot-head + .tot-row { border-top: none; }
+.tot-name { flex: 1; font-weight: 550; font-size: 14.5px; min-width: 0; }
+.tot-num {
+  width: 92px; text-align: right; flex: none;
+  font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 600;
+}
+.tot-head .tot-num { font-family: var(--sans); font-size: 11px; font-weight: 700; }
+.tot-num.quota { color: var(--muted); }
+.tot-row.grand { background: var(--paper); border-top: 1.5px solid var(--line-2); }
+.tot-row.grand .tot-name { font-weight: 700; }
+.tot-row.grand .tot-num { font-weight: 700; }
+.tot-row.grand .tot-num.quota { font-family: var(--sans); font-weight: 500; font-size: 12.5px; }
+
+/* ---------- Indicatore "Aggiorno…" ---------- */
+.syncing {
+  position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 50;
+  background: var(--ink); color: #fff; font-size: 12px; font-weight: 600;
+  padding: 5px 12px; border-radius: 999px; opacity: .88; pointer-events: none;
+  animation: syncin .2s ease;
+}
+@keyframes syncin { from { opacity: 0; transform: translate(-50%, -6px); } }

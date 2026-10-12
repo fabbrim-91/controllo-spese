@@ -21,42 +21,32 @@ function currentEmail() { return (session && session.user && session.user.email)
 
 /* ------------------------------ STORE ----------------------------------- */
 /* Tiene una copia in memoria (`_state`) usata dal rendering (sincrono).
-   Le mutazioni scrivono su Supabase e poi ricaricano la copia. */
+   Le mutazioni scrivono su Supabase e poi ricaricano la copia.
+   La lettura avviene con UNA sola RPC (`bootstrap`) invece di 7 round trip,
+   e l'ultimo stato viene messo in cache locale per un'apertura istantanea. */
+const CACHE_KEY = 'note-spese/cache-v1';
 const store = {
   _state: { groups: [] },
   groups() { return this._state.groups; },
   group(id) { return this._state.groups.find(g => g.id === id); },
 
-  async refresh() {
-    const [g, m, e, s, st] = await Promise.all([
-      db.from('groups').select('*').order('created_at', { ascending: false }),
-      db.from('members').select('*').order('created_at', { ascending: true }),
-      db.from('expenses').select('*').order('created_at', { ascending: false }),
-      db.from('expense_shares').select('*'),
-      db.from('settlements').select('*').order('created_at', { ascending: false }),
-    ]);
-    for (const r of [g, m, e, s, st]) if (r.error) throw r.error;
-
-    const membersByG = groupBy(m.data, 'group_id');
-    const expByG     = groupBy(e.data, 'group_id');
-    const sharesByE  = groupBy(s.data, 'expense_id');
-    const setByG     = groupBy(st.data, 'group_id');
-
-    this._state.groups = g.data.map(gr => ({
+  // Mappa la risposta della RPC nel formato usato dalla UI
+  _apply(payload) {
+    this._state.groups = (payload.groups || []).map(gr => ({
       id: gr.id,
       name: gr.name,
       imageUrl: gr.image_url || null,
       createdAt: gr.created_at,
-      members: (membersByG[gr.id] || []).map(x => ({ id: x.id, name: x.name })),
-      expenses: (expByG[gr.id] || []).map(x => ({
+      members: (gr.members || []).map(x => ({ id: x.id, name: x.name })),
+      expenses: (gr.expenses || []).map(x => ({
         id: x.id,
         payerId: x.payer_id,
         amountCents: x.amount_cents,
         description: x.description,
         createdAt: x.created_at,
-        splits: (sharesByE[x.id] || []).map(sh => ({ memberId: sh.member_id, shareCents: sh.share_cents })),
+        splits: (x.splits || []).map(sh => ({ memberId: sh.member_id, shareCents: sh.share_cents })),
       })),
-      settlements: (setByG[gr.id] || []).map(x => ({
+      settlements: (gr.settlements || []).map(x => ({
         id: x.id,
         fromId: x.from_member,
         toId: x.to_member,
@@ -64,6 +54,39 @@ const store = {
         createdAt: x.created_at,
       })),
     }));
+  },
+
+  // Carica lo stato dalla cache locale (apertura immediata, senza rete)
+  loadCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return false;
+      const c = JSON.parse(raw);
+      if (!c || c.email !== currentEmail()) return false; // cache di un altro utente
+      this._state.groups = c.groups || [];
+      isAdmin = !!c.isAdmin;
+      return this._state.groups.length > 0;
+    } catch (_) { return false; }
+  },
+  saveCache() {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        email: currentEmail(), isAdmin, groups: this._state.groups, at: Date.now(),
+      }));
+    } catch (_) {}
+  },
+  clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (_) {} },
+
+  // UNA chiamata: permessi + tutti i dati. Ritorna true se l'utente è ammesso.
+  async refresh() {
+    const { data, error } = await db.rpc('bootstrap');
+    if (error) throw error;
+    const payload = data || {};
+    isAdmin = !!payload.is_admin;
+    if (!payload.is_allowed) { this._state.groups = []; this.clearCache(); return false; }
+    this._apply(payload);
+    this.saveCache();
+    return true;
   },
 
   async addGroup(name, memberNames) {
@@ -82,7 +105,7 @@ const store = {
     await this.refresh();
   },
 
-  async addExpense(groupId, { description, amountCents, payerId, participantIds }) {
+  async addExpense(groupId, { description, amountCents, payerId, participantIds, createdAt }) {
     // Scrittura SOLO via RPC: spesa + quote in un'unica transazione (invariante).
     const { error } = await db.rpc('add_expense', {
       p_group_id: groupId,
@@ -90,12 +113,13 @@ const store = {
       p_amount_cents: amountCents,
       p_description: description,
       p_participant_ids: participantIds,
+      p_created_at: createdAt || null,
     });
     if (error) throw error;
     await this.refresh();
   },
 
-  async updateExpense(expenseId, { description, amountCents, payerId, participantIds }) {
+  async updateExpense(expenseId, { description, amountCents, payerId, participantIds, createdAt }) {
     // Modifica atomica via RPC: aggiorna la spesa e ricalcola le quote (stesso id).
     const { error } = await db.rpc('update_expense', {
       p_expense_id: expenseId,
@@ -103,6 +127,7 @@ const store = {
       p_amount_cents: amountCents,
       p_description: description,
       p_participant_ids: participantIds,
+      p_created_at: createdAt || null,
     });
     if (error) throw error;
     await this.refresh();
@@ -211,6 +236,21 @@ function computeBalances(g) {
   }
   return net;
 }
+// Totali del gruppo: quanto ha anticipato ciascuno (paid) e quanto gli e'
+// costato (share), piu' il totale delle spese. I rimborsi NON contano: sono
+// giri di denaro, non spesa nuova.
+function computeTotals(g) {
+  const paid = {}, share = {};
+  g.members.forEach(m => { paid[m.id] = 0; share[m.id] = 0; });
+  let total = 0;
+  for (const e of g.expenses) {
+    total += e.amountCents;
+    if (paid[e.payerId] !== undefined) paid[e.payerId] += e.amountCents;
+    for (const s of e.splits) if (share[s.memberId] !== undefined) share[s.memberId] += s.shareCents;
+  }
+  return { paid, share, total };
+}
+
 function simplifyDebts(net) {
   const creditors = [], debtors = [];
   for (const [id, v] of Object.entries(net)) {
@@ -232,12 +272,25 @@ function simplifyDebts(net) {
 }
 
 /* -------------------------------- STATE UI ------------------------------- */
-const view = { screen: 'home', groupId: null };
+const view = { screen: 'home', groupId: null, tab: 'bilanci' };
 const app = document.getElementById('app');
 
 function nameOf(g, id) { return (g.members.find(m => m.id === id) || {}).name || '—'; }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function relDate(ts) { return new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }); }
+// Date <-> valore di input[type=date] (YYYY-MM-DD), in ora locale.
+function toDateInput(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+// Conserva l'ora originale della spesa (se c'era), cambiando solo il giorno.
+function fromDateInput(val, originalIso) {
+  if (!val) return null;
+  const [y, m, d] = val.split('-').map(Number);
+  const base = originalIso ? new Date(originalIso) : new Date();
+  const out = new Date(y, m - 1, d, base.getHours(), base.getMinutes(), base.getSeconds());
+  return out.toISOString();
+}
 function avatarHtml(g, cls) {
   return g.imageUrl
     ? `<span class="${cls} has-img"><img src="${g.imageUrl}" alt=""></span>`
@@ -325,6 +378,26 @@ function renderGroup() {
     </div>`;
   }).join('');
 
+  // --- TOTALI: quanto ha anticipato ciascuno e quanto gli è costato ---
+  const tot = computeTotals(g);
+  const totalsRows = g.members.map(m => `<div class="tot-row">
+      <span class="tot-name">${esc(m.name)}</span>
+      <span class="tot-num">${formatCents(tot.paid[m.id])}</span>
+      <span class="tot-num quota">${formatCents(tot.share[m.id])}</span>
+    </div>`).join('');
+  const totalsPanel = `
+    <div class="tot-head">
+      <span class="tot-name"></span>
+      <span class="tot-num">Ha pagato</span>
+      <span class="tot-num">Sua quota</span>
+    </div>
+    ${totalsRows}
+    <div class="tot-row grand">
+      <span class="tot-name">Totale spese</span>
+      <span class="tot-num">${formatCents(tot.total)}</span>
+      <span class="tot-num quota">${g.expenses.length} ${g.expenses.length === 1 ? 'voce' : 'voci'}</span>
+    </div>`;
+
   const settleList = settlements.length
     ? settlements.map((s, idx) => `<div class="settle-row">
         <span class="flow">
@@ -384,8 +457,11 @@ function renderGroup() {
     </div>
 
     <div class="section">
-      <div class="section-title">Bilanci</div>
-      <div class="card">${balances}</div>
+      <div class="tabs" role="tablist">
+        <button class="tab ${view.tab === 'totali' ? '' : 'active'}" data-tab="bilanci" role="tab">Bilanci</button>
+        <button class="tab ${view.tab === 'totali' ? 'active' : ''}" data-tab="totali" role="tab">Totali</button>
+      </div>
+      <div class="card">${view.tab === 'totali' ? totalsPanel : balances}</div>
     </div>
 
     <div class="section">
@@ -398,6 +474,9 @@ function renderGroup() {
     </div>`;
 
   document.getElementById('back').onclick = () => { view.screen = 'home'; render(); };
+  app.querySelectorAll('[data-tab]').forEach(b => {
+    b.onclick = () => { view.tab = b.dataset.tab; render(); };
+  });
   document.getElementById('group-title').onclick = () => openGroupSettings(g);
   document.getElementById('group-settings').onclick = () => openGroupSettings(g);
   document.getElementById('group-reload').onclick = reload;
@@ -732,6 +811,8 @@ function openExpenseSheet(g, existing) {
   // In modifica: partecipanti = quelli della spesa; altrimenti tutti.
   const participants = new Set(editing ? existing.splits.map(s => s.memberId) : g.members.map(m => m.id));
   const amtValue = editing ? (existing.amountCents / 100).toFixed(2).replace('.', ',') : '';
+  // input[type=date] vuole YYYY-MM-DD in ora locale
+  const dateValue = toDateInput(editing ? new Date(existing.createdAt) : new Date());
   const sheet = openSheet(`
     <h2>${editing ? 'Modifica spesa' : 'Nuova spesa'}</h2>
     <div class="field">
@@ -741,6 +822,10 @@ function openExpenseSheet(g, existing) {
     <div class="field">
       <label>Importo (€)</label>
       <input type="text" inputmode="decimal" id="e-amt" class="amount-input" placeholder="0,00" autocomplete="off" value="${amtValue}">
+    </div>
+    <div class="field">
+      <label>Data</label>
+      <input type="date" id="e-date" value="${dateValue}">
     </div>
     <div class="field">
       <label>Ha pagato</label>
@@ -798,10 +883,11 @@ function openExpenseSheet(g, existing) {
     if (!ids.length) return showErr(err, 'Seleziona almeno una persona.');
     withBusy(ev.target, 'Salvo…', async () => {
       try {
+        const createdAt = fromDateInput(sheet.querySelector('#e-date').value, editing ? existing.createdAt : null);
         if (editing) {
-          await store.updateExpense(existing.id, { description: description || 'Spesa', amountCents, payerId, participantIds: ids });
+          await store.updateExpense(existing.id, { description: description || 'Spesa', amountCents, payerId, participantIds: ids, createdAt });
         } else {
-          await store.addExpense(g.id, { description: description || 'Spesa', amountCents, payerId, participantIds: ids });
+          await store.addExpense(g.id, { description: description || 'Spesa', amountCents, payerId, participantIds: ids, createdAt });
         }
         sheet.remove(); render();
       } catch (e) { showErr(err, errMsg(e)); }
@@ -916,6 +1002,8 @@ function renderNotAllowed() {
 
 async function doLogout() {
   try { await db.auth.signOut(); } catch (_) {}
+  store.clearCache();
+  store._state.groups = [];
   session = null; isAdmin = false; view.screen = 'home'; view.groupId = null;
   route();
 }
@@ -988,19 +1076,41 @@ async function route() {
   _routing = true;
   try {
     if (!session) { renderLogin(); return; }
-    const { data: allowed, error } = await db.rpc('is_allowed');
-    if (error) return showFatal(errMsg(error));
+
+    // 1) Apertura istantanea: se c'è una copia locale, disegnala subito.
+    const fromCache = store.loadCache();
+    if (fromCache) { render(); showSyncing(true); }
+    else showLoading('Carico i dati…');
+
+    // 2) Poi una sola chiamata: permessi + tutti i dati.
+    let allowed;
+    try { allowed = await store.refresh(); }
+    catch (e) {
+      if (fromCache) { showSyncing(false); toast('Offline: dati non aggiornati'); return; }
+      return showFatal(errMsg(e));
+    }
+    showSyncing(false);
     if (!allowed) return renderNotAllowed();
-    try { const { data: adm } = await db.rpc('is_admin'); isAdmin = !!adm; }
-    catch (_) { isAdmin = false; }
-    showLoading('Carico i dati…');
-    await store.refresh();
     render();
   } catch (e) {
     showFatal(errMsg(e));
   } finally {
     _routing = false;
   }
+}
+
+/* Indicatore discreto di sincronizzazione in corso */
+function showSyncing(on) {
+  let el = document.getElementById('syncing');
+  if (on) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'syncing';
+      el.className = 'syncing';
+      el.textContent = 'Aggiorno…';
+      document.body.appendChild(el);
+    }
+  } else if (el) el.remove();
 }
 
 /* ---- Pull-to-refresh (trascina in basso in cima alla pagina) ---- */

@@ -72,3 +72,22 @@ gli altri utenti non vedono nemmeno il pulsante e comunque l'API li rifiuta.
 ## MIGRAZIONE per la modifica spesa
 Esegui una volta nell'SQL Editor: `edit-expense.sql` (aggiunge la RPC
 `update_expense`, che aggiorna spesa e quote in un'unica transazione).
+
+
+## Aggiornamento: performance, Totali, data spesa
+**Apertura più rapida.** Il caricamento usa una sola RPC (`bootstrap`) invece di 7
+round trip, e l'ultimo stato viene tenuto in cache locale: alla riapertura la app
+compare subito e si aggiorna in background (indicatore "Aggiorno…").
+`index.html` usa `preconnect` + `defer` per non bloccare il rendering.
+
+**Scheda Totali.** Dentro un gruppo, accanto a "Bilanci" c'è "Totali": per ogni
+membro quanto ha anticipato ("Ha pagato") e quanto gli è costato ("Sua quota"),
+più il totale delle spese del gruppo. I rimborsi non sono conteggiati: sono giri
+di denaro, non spesa nuova.
+
+**Data della spesa.** Nel pannello spesa c'è il campo Data (pre-compilato a oggi
+per le nuove, con la data reale in modifica). Utile per inserire spese in ritardo.
+
+### Migrazioni richieste
+Esegui `07_bootstrap.sql` e `08_expense_date.sql`. La 08 elimina e ricrea
+`add_expense`/`update_expense` con il parametro data: va applicata dopo la 05.
